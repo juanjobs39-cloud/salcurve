@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { api, COIN, type Quote } from "../api";
 import { Card, CurveProgress, GraduatedBadge, PriceChart, Spinner, TokenAvatar, TradeRow } from "../components";
 import { amount, ago, pct, price } from "../format";
@@ -226,6 +226,14 @@ export default function TokenPage() {
         </Card>
       </div>
       <aside className="space-y-4">
+        {tok.graduated && (
+          <Link
+            to={`/swap?token=${tok.ticker}`}
+            className="block rounded-2xl bg-sal-400 py-3 text-center font-semibold text-ink-950 hover:bg-sal-300"
+          >
+            Open in Swap ⇄
+          </Link>
+        )}
         {tok.live ? <TradePanel ticker={tok.ticker} graduated={tok.graduated} /> : <Card className="text-amber-300 text-sm">Waiting for the launch block…</Card>}
         <Card className="text-xs text-ink-400 space-y-1">
           <div className="text-ink-200 font-semibold text-sm mb-1">How the curve works</div>

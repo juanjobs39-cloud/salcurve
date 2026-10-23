@@ -19,6 +19,11 @@ pool from [salvium/salvium#140](https://github.com/salvium/salvium/pull/140).
   (30,000 SAL1) and the last 20M tokens become a pool that nobody owns, so the liquidity is locked
   forever. The pool opens at the curve's final price, so there is no jump, and its 1% fee stays in
   the pool. Graduated tokens show a **★ Graduated** badge and keep trading with the same buttons.
+- **Swap** graduated tokens on a Uniswap-style page (`/swap`): pick SAL1 → token to buy or
+  token → SAL1 to sell, flip with ⇅, and see the price impact, the 1% pool fee, the minimum
+  received and the locked liquidity. Find a token by name, ticker, asset type (`salWAVE`) or
+  launch transaction hash; links like `/swap?token=WAVE&side=sell` open it directly. Tokens still
+  on their curve are shown with a link to their own page.
 - **Trade** on the curve with live quotes, price impact and a slippage limit. If the price
   moves past the limit before the next block, the network refunds the burn automatically.
 - **Browse** tokens (New, Trending, Top market cap) with a price chart, curve progress, trade
@@ -34,10 +39,13 @@ executable spec (`backend/curve_model.py`) and adopts the chain state if they ev
 | Token page: a graduated token, chart, buy/sell | Launch a token |
 |---|---|
 | ![Token page](docs/token.png) | ![Launch](docs/launch.png) |
+| **Swap** | **Token search: name, ticker, salXXX or launch tx** |
+| ![Swap](docs/swap.png) | ![Swap token picker](docs/swap-picker.png) |
 | **Leaderboard** | **Portfolio** |
 | ![Leaderboard](docs/leaderboard.png) | ![Portfolio](docs/portfolio.png) |
 
-<p align="center"><img src="docs/mobile-token.png" width="300" alt="Mobile token page"></p>
+<p align="center"><img src="docs/mobile-token.png" width="300" alt="Mobile token page">
+<img src="docs/mobile-swap.png" width="300" alt="Mobile swap page"></p>
 
 ## Architecture
 

@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import Launch from "./pages/Launch";
 import Leaderboard from "./pages/Leaderboard";
 import Portfolio from "./pages/Portfolio";
+import Swap from "./pages/Swap";
 import TokenPage from "./pages/TokenPage";
 
 function Logo() {
@@ -72,6 +73,9 @@ export default function App() {
               <NavLink to="/" end className={navCls}>
                 Tokens
               </NavLink>
+              <NavLink to="/swap" className={navCls}>
+                Swap
+              </NavLink>
               <NavLink to="/launch" className={navCls}>
                 Launch
               </NavLink>
@@ -107,6 +111,9 @@ export default function App() {
             <NavLink to="/" end className={navCls}>
               Tokens
             </NavLink>
+            <NavLink to="/swap" className={navCls}>
+              Swap
+            </NavLink>
             <NavLink to="/launch" className={navCls}>
               Launch
             </NavLink>
@@ -127,6 +134,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/t/:ticker" element={<TokenPage />} />
+            <Route path="/swap" element={<Swap />} />
             <Route path="/launch" element={<Launch />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/leaderboard" element={<Leaderboard />} />

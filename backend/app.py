@@ -130,6 +130,8 @@ def token_row(t: dict, st: dict | None, vol: int, trades: int) -> dict:
         "volume_24h": vol,
         "trades": trades,
         "live": st is not None,
+        "asset_type": "sal" + t["ticker"],               # the token's on-chain identifier
+        "launch_tx": t.get("launch_tx"),
     }
 
 
@@ -275,6 +277,39 @@ def list_tokens(sort: str = "new"):
     key = {"new": lambda t: -t["created_at"], "top": lambda t: -t["market_cap"],
            "trending": lambda t: -t["volume_24h"]}.get(sort, lambda t: -t["created_at"])
     return sorted(toks, key=key)
+
+
+def swap_match(t: dict, q: str) -> int:
+    """0 = no match; higher = better (exact id > exact ticker > prefix > substring)."""
+    ql = q.lower()
+    tx = (t.get("launch_tx") or "").lower()
+    if tx and (ql == tx or (len(ql) >= 8 and tx.startswith(ql))):
+        return 5
+    if ql == t["asset_type"].lower():
+        return 5
+    if ql.lstrip("$") == t["ticker"].lower():
+        return 4
+    if t["ticker"].lower().startswith(ql.lstrip("$")) or t["name"].lower().startswith(ql):
+        return 3
+    if ql in t["name"].lower() or ql in t["ticker"].lower():
+        return 2
+    return 0
+
+
+@app.get("/api/swap/tokens")
+def swap_tokens(q: str = ""):
+    """Graduated tokens for the swap picker, searchable by name, ticker, asset type or launch tx hash.
+    Tokens that match but are still on their curve come back in `on_curve`."""
+    q = q.strip()[:80]
+    toks = [t for t in tokens_with_stats() if t["live"]]
+    if q:
+        scored = [(swap_match(t, q), t) for t in toks]
+        scored = sorted([s for s in scored if s[0]], key=lambda s: (-s[0], -s[1]["pool_sal"]))
+        toks = [t for _, t in scored]
+    else:
+        toks = sorted(toks, key=lambda t: -t["pool_sal"])
+    return {"tokens": [t for t in toks if t["graduated"]],
+            "on_curve": [t for t in toks if not t["graduated"]][:5] if q else []}
 
 
 @app.get("/api/tokens/{ticker}")

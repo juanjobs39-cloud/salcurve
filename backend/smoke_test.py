@@ -6,6 +6,7 @@
 import json
 import sys
 import time
+import urllib.parse
 import urllib.request
 import uuid
 
@@ -93,4 +94,13 @@ print("6. feeds")
 lb = call("GET", "/api/leaderboard")
 check(any(t["ticker"] == ticker for t in lb["tokens"]), "token on leaderboard")
 check(len(call("GET", f"/api/tokens/{ticker}")["chart"]) >= 3, "chart has points")
+
+print("7. swap search")
+tok = call("GET", f"/api/tokens/{ticker}")["token"]
+for q in (ticker.lower(), "Smoke", tok["asset_type"], tok["launch_tx"]):
+    r = call("GET", "/api/swap/tokens?q=" + urllib.parse.quote(q))
+    hit = [t["ticker"] for t in r["tokens"] + r["on_curve"]]
+    check(hit and hit[0] == ticker, f"swap search {q[:16]!r} finds {ticker}")
+check(ticker not in [t["ticker"] for t in call("GET", "/api/swap/tokens?q=")["tokens"]],
+      "a token still on its curve is not offered as a pool")
 print("\nSALCURVE SMOKE TEST: PASSED")

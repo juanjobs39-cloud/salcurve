@@ -22,6 +22,8 @@ export type Token = {
   trades: number;
   live: boolean;
   holders_est?: number;
+  asset_type: string; // on-chain identifier, e.g. "salWAVE"
+  launch_tx: string | null;
 };
 
 export type Trade = {
@@ -120,6 +122,7 @@ export const api = {
   launch: (form: FormData) => req<{ tx_hash: string; ticker: string }>("/api/tokens", { method: "POST", body: form }),
   launchPrice: (t: string) => req<{ price: number }>(`/api/launch-price?ticker=${t}`),
   trades: () => req<Trade[]>("/api/trades"),
+  swapTokens: (q: string) => req<{ tokens: Token[]; on_curve: Token[] }>(`/api/swap/tokens?q=${encodeURIComponent(q)}`),
   leaderboard: () =>
     req<{
       tokens: Token[];
