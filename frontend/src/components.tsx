@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { createChart, type IChartApi, type UTCTimestamp } from "lightweight-charts";
 import type { Token, Trade } from "./api";
 import { COIN } from "./api";
-import { ago, amount, pct, price } from "./format";
+import { ago, amount, pct } from "./format";
 
 /** Token image, or a deterministic gradient badge built from the ticker. */
 export function TokenAvatar({ token, size = 56 }: { token: Pick<Token, "ticker" | "has_image">; size?: number }) {
@@ -92,7 +92,7 @@ export function TokenCard({ t }: { t: Token }) {
   );
 }
 
-export function TradeRow({ tr, showTicker = true }: { tr: Trade; showTicker?: boolean }) {
+export function TradeRow({ tr, showTicker = true, compact = false }: { tr: Trade; showTicker?: boolean; compact?: boolean }) {
   const buy = tr.op === "buy";
   const sal = buy ? tr.amount_in : tr.amount_out;
   const tokens = buy ? tr.amount_out : tr.amount_in;
@@ -105,7 +105,7 @@ export function TradeRow({ tr, showTicker = true }: { tr: Trade; showTicker?: bo
       >
         {tr.filled ? tr.op.toUpperCase() : "REFUND"}
       </span>
-      <span className="text-ink-200 truncate flex-1">
+      <span className="text-ink-200 truncate flex-1 min-w-0">
         {tr.nickname ?? "on-chain wallet"}
         {showTicker && (
           <Link to={`/t/${tr.ticker}`} className="ml-2 font-mono text-sal-400 hover:underline">
@@ -113,9 +113,9 @@ export function TradeRow({ tr, showTicker = true }: { tr: Trade; showTicker?: bo
           </Link>
         )}
       </span>
-      <span className="font-mono text-ink-200 text-right w-28">{amount(sal)} SAL1</span>
-      <span className="font-mono text-ink-400 text-right w-28 hidden sm:block">{amount(tokens)} tok</span>
-      <span className="text-ink-400 text-xs w-16 text-right">{ago(tr.ts)}</span>
+      <span className={`font-mono text-ink-200 text-right ${compact ? "w-20" : "w-28"}`}>{amount(sal)} SAL1</span>
+      {!compact && <span className="font-mono text-ink-400 text-right w-28 hidden sm:block">{amount(tokens)} tok</span>}
+      {!compact && <span className="text-ink-400 text-xs w-16 text-right">{ago(tr.ts)}</span>}
     </div>
   );
 }
@@ -128,23 +128,35 @@ export function PriceChart({ points }: { points: { ts: number; price: number }[]
 
   useEffect(() => {
     if (!el.current) return;
-    const c = createChart(el.current, {
-      autoSize: true,
+    const box = el.current;
+    const c = createChart(box, {
+      width: box.clientWidth || 600,
+      height: 288,
       layout: { background: { color: "transparent" }, textColor: "#7d8a9c", fontFamily: "Inter, system-ui" },
       grid: { vertLines: { color: "#131922" }, horzLines: { color: "#131922" } },
       rightPriceScale: { borderColor: "#1c2430" },
       timeScale: { borderColor: "#1c2430", timeVisible: true, secondsVisible: true },
       crosshair: { mode: 0 },
+      // the chart formats times with the browser locale by default, which throws
+      // "Incorrect locale information provided" for some locales: pin it
+      localization: { locale: "en-US" },
     });
     series.current = c.addAreaSeries({
       lineColor: "#3ee0c8",
       topColor: "rgba(62,224,200,0.35)",
       bottomColor: "rgba(62,224,200,0.02)",
       lineWidth: 2,
-      priceFormat: { type: "custom", formatter: (p: number) => price(p * COIN), minMove: 1e-10 },
+      // per-token prices are ~1e-4 SAL1, too small for the chart's price scale: plot SAL1 per 1M tokens
+      priceFormat: { type: "price", precision: 2, minMove: 0.01 },
     });
     chart.current = c;
-    return () => c.remove();
+    // size the chart explicitly from its container (autoSize did not size the canvases)
+    const ro = new ResizeObserver(() => c.applyOptions({ width: box.clientWidth }));
+    ro.observe(box);
+    return () => {
+      ro.disconnect();
+      c.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -155,13 +167,18 @@ export function PriceChart({ points }: { points: { ts: number; price: number }[]
     for (const p of points) {
       const t = Math.max(p.ts, last + 1);
       last = t;
-      data.push({ time: t as UTCTimestamp, value: p.price / COIN });
+      data.push({ time: t as UTCTimestamp, value: (p.price / COIN) * 1_000_000 });
     }
     series.current.setData(data);
     chart.current?.timeScale().fitContent();
   }, [points]);
 
-  return <div ref={el} className="w-full h-72" />;
+  return (
+    <div>
+      <div className="text-xs text-ink-400 mb-1">SAL1 per 1M tokens</div>
+      <div ref={el} className="w-full h-72" />
+    </div>
+  );
 }
 
 export function Spinner() {

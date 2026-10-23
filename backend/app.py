@@ -90,8 +90,18 @@ def user_for(key: str | None) -> dict:
     return u
 
 
+FRIENDLY_ERRORS = {
+    "no input candidates": "Your coins from the previous transaction are still locked. Wait about 10 blocks (~30 s) and try again.",
+    "not enough unlocked money": "Not enough unlocked balance yet. Coins unlock a few blocks after they arrive.",
+    "not enough money": "Not enough balance for this amount plus the network fee.",
+}
+
+
 def rpc_error(e: RpcError):
     msg = e.error.get("message", str(e)) if isinstance(e.error, dict) else str(e)
+    for needle, friendly in FRIENDLY_ERRORS.items():
+        if needle in msg.lower():
+            raise HTTPException(400, friendly)
     raise HTTPException(400, msg)
 
 

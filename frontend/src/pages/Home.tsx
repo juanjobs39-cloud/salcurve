@@ -68,7 +68,7 @@ export default function Home() {
             </span>
           </div>
           {trades.data && trades.data.length > 0 ? (
-            trades.data.map((tr) => <TradeRow key={tr.tx_hash} tr={tr} />)
+            trades.data.map((tr) => <TradeRow key={tr.tx_hash} tr={tr} compact />)
           ) : (
             <p className="text-ink-400 text-sm py-6 text-center">No trades yet.</p>
           )}

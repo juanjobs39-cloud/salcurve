@@ -60,8 +60,8 @@ except RuntimeError: rpc(W, "create_wallet", filename="house", password="", lang
 a = rpc(W, "get_address", account_index=0)
 addr = a["addresses"][0].get("address_carrot") or a["address"]
 h = rpc(D, "get_block_count")["count"]
-if h < 150:
-    rpc(D, "generateblocks", amount_of_blocks=150 - h, wallet_address=addr)
+if h < 600:   # ~50k SAL1 of mature block rewards for the faucet
+    rpc(D, "generateblocks", amount_of_blocks=600 - h, wallet_address=addr)
 print("chain height", rpc(D, "get_block_count")["count"])
 PY
 
