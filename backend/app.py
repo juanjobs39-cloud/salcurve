@@ -106,10 +106,9 @@ def rpc_error(e: RpcError):
 
 
 def token_row(t: dict, st: dict | None, vol: int, trades: int) -> dict:
-    reserve = st["reserve"] if st else 0
-    sold = st["sold"] if st else 0
-    state = M.CurveState(reserve, sold)
+    state = M.state_from_row(st)
     price = M.spot_price(state)
+    graduated = state.phase == M.PHASE_POOL
     return {
         "ticker": t["ticker"],
         "name": t["name"],
@@ -120,9 +119,14 @@ def token_row(t: dict, st: dict | None, vol: int, trades: int) -> dict:
         "created_at": t["created_at"],
         "price": price,                                   # SAL1 atomic per whole token
         "market_cap": price * SUPPLY_TOKENS,              # SAL1 atomic
-        "reserve": reserve,
-        "sold": sold,
-        "progress": sold / M.CURVE_TOKEN_SUPPLY,
+        "reserve": state.reserve,
+        "sold": state.sold,
+        "progress": 1.0 if graduated else state.sold / M.CURVE_SALE_SUPPLY,   # towards graduation
+        "graduated": graduated,
+        "graduation_height": st["graduation_height"] if st else None,
+        "pool_sal": state.pool_sal,                       # SAL1 locked in the pool forever
+        "pool_tokens": state.pool_tokens,
+        "circulating": M.circulating(state),
         "volume_24h": vol,
         "trades": trades,
         "live": st is not None,
@@ -205,7 +209,7 @@ def me(x_key: str | None = Header(None)):
         if asset.startswith("sal") and total > 0:
             ticker = asset[3:]
             st = states.get(ticker)
-            price = M.spot_price(M.CurveState(st["reserve"], st["sold"])) if st else 0
+            price = M.spot_price(M.state_from_row(st)) if st else 0
             holdings.append({"ticker": ticker, "name": names.get(ticker, ticker),
                              "has_image": has_image.get(ticker, False), "amount": total,
                              "unlocked": unlocked, "blocks_to_unlock": blocks,
@@ -308,17 +312,19 @@ def quote(ticker: str, side: str, amount: str):
         raise HTTPException(404, "curve not found")
     filled = r["quote_buy_filled"] if side == "buy" else r["quote_sell_filled"]
     out = r["quote_buy_out"] if side == "buy" else r["quote_sell_out"]
-    st = M.CurveState(r["curve"]["reserve"], r["curve"]["sold"])
+    st = M.state_from_row(r["curve"])
     q = M.quote_buy(st, atomic) if side == "buy" else M.quote_sell(st, atomic)
     price_after = M.spot_price(q[1]) if q else r["curve"]["spot_price"]
     impact = (price_after - r["curve"]["spot_price"]) / r["curve"]["spot_price"] if r["curve"]["spot_price"] else 0
-    fee = 0   # SAL1 burnt as the 1% fee
+    fee = 0   # SAL1: burnt on the curve, kept by the pool after graduation
     if q and side == "buy":
-        fee = atomic - (q[1].reserve - st.reserve)
+        fee = M.fee_of(atomic)
     elif q:
-        fee = (st.reserve - q[1].reserve) - q[0]
+        fee = q[0] * M.CURVE_FEE_DIVISOR // (M.CURVE_FEE_DIVISOR - 1) - q[0]
+    graduates = bool(q) and st.phase == M.PHASE_CURVE and q[1].phase == M.PHASE_POOL
     return {"side": side, "amount_in": atomic, "filled": filled, "amount_out": out, "fee": fee,
-            "price_before": r["curve"]["spot_price"], "price_after": price_after, "price_impact": impact}
+            "price_before": r["curve"]["spot_price"], "price_after": price_after, "price_impact": impact,
+            "graduates": graduates}
 
 
 class TradeIn(BaseModel):
@@ -374,8 +380,9 @@ def leaderboard():
 def status():
     return {"height": chain.height, "indexed": int(db.get_meta("indexed_height", "0")),
             "block_seconds": chain.block_seconds, "supply": M.CURVE_TOKEN_SUPPLY,
+            "sale_supply": M.CURVE_SALE_SUPPLY, "pool_supply": M.CURVE_POOL_SUPPLY,
             "virtual_sal": M.CURVE_VIRTUAL_SAL, "virtual_tokens": M.CURVE_VIRTUAL_TOKENS,
-            "fee_divisor": M.CURVE_FEE_DIVISOR, "faucet_amount": FAUCET_AMOUNT, "pr": "salvium/salvium#139"}
+            "fee_divisor": M.CURVE_FEE_DIVISOR, "faucet_amount": FAUCET_AMOUNT, "pr": "salvium/salvium#139", "graduation_pr": "salvium/salvium#140"}
 
 
 # ----------------------------------------------------------------------------- frontend

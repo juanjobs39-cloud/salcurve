@@ -58,6 +58,10 @@ export default function App() {
           Demo on a private Salvium testnet running the CURVE proposal{" "}
           <a className="underline" href="https://github.com/salvium/salvium/pull/139" target="_blank" rel="noreferrer">
             (salvium/salvium#139)
+          </a>{" "}
+          with graduation{" "}
+          <a className="underline" href="https://github.com/salvium/salvium/pull/140" target="_blank" rel="noreferrer">
+            (#140)
           </a>
           . Coins have no value.
         </div>

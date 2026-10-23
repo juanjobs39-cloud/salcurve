@@ -12,7 +12,12 @@ export type Token = {
   market_cap: number; // SAL1 atomic
   reserve: number;
   sold: number;
-  progress: number;
+  progress: number; // towards graduation (80M tokens sold)
+  graduated: boolean;
+  graduation_height: number | null;
+  pool_sal: number; // SAL1 locked in the pool forever
+  pool_tokens: number;
+  circulating: number;
   volume_24h: number;
   trades: number;
   live: boolean;
@@ -52,6 +57,7 @@ export type Quote = {
   price_before: number;
   price_after: number;
   price_impact: number;
+  graduates: boolean; // this buy sells out the curve and creates the pool
 };
 
 export type Status = { height: number; indexed: number; block_seconds: number; faucet_amount: number; pr: string };

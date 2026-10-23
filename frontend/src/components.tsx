@@ -36,18 +36,39 @@ export function TokenAvatar({ token, size = 56 }: { token: Pick<Token, "ticker" 
   );
 }
 
-export function CurveProgress({ progress, compact = false }: { progress: number; compact?: boolean }) {
+export function GraduatedBadge() {
+  return (
+    <span
+      title="The curve sold out: its reserve now trades in a pool whose liquidity is locked forever"
+      className="inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-full border border-amber-300/40 bg-amber-300/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200"
+    >
+      ★ Graduated
+    </span>
+  );
+}
+
+export function CurveProgress({
+  progress,
+  graduated = false,
+  compact = false,
+}: {
+  progress: number;
+  graduated?: boolean;
+  compact?: boolean;
+}) {
   return (
     <div className="w-full">
       {!compact && (
         <div className="flex justify-between text-xs text-ink-400 mb-1">
-          <span>Curve progress</span>
-          <span className="font-mono text-ink-200">{pct(progress)}</span>
+          <span>{graduated ? "Graduated: trading in the locked pool" : "Progress to graduation"}</span>
+          <span className="font-mono text-ink-200">{pct(graduated ? 1 : progress)}</span>
         </div>
       )}
       <div className={`w-full rounded-full bg-ink-700 overflow-hidden ${compact ? "h-1.5" : "h-2.5"}`}>
         <div
-          className="h-full rounded-full bg-gradient-to-r from-sal-600 to-sal-300 transition-[width] duration-700"
+          className={`h-full rounded-full bg-gradient-to-r transition-[width] duration-700 ${
+            graduated ? "from-amber-500 to-amber-200" : "from-sal-600 to-sal-300"
+          }`}
           style={{ width: `${Math.min(100, progress * 100).toFixed(2)}%` }}
         />
       </div>
@@ -85,7 +106,13 @@ export function TokenCard({ t }: { t: Token }) {
         </div>
       </div>
       <div className="mt-3">
-        <CurveProgress progress={t.progress} compact />
+        {t.graduated && (
+          <div className="mb-1.5 flex items-center justify-between text-[11px]">
+            <GraduatedBadge />
+            <span className="text-ink-400">liquidity locked in pool</span>
+          </div>
+        )}
+        <CurveProgress progress={t.progress} graduated={t.graduated} compact />
       </div>
       {!t.live && <div className="mt-2 text-xs text-amber-300">Waiting for the launch block…</div>}
     </Link>

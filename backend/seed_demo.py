@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Fill a fresh SalCurve demo with a few visitors, tokens (with generated logos) and trades.
+WAVE is bought past the graduation threshold, so the demo also shows a graduated pool.
 
     python3 seed_demo.py [base_url]
 """
@@ -100,4 +101,27 @@ for i in range(26):
     except urllib.error.HTTPError as e:
         print("buy failed", e.code, e.read()[:120])
     time.sleep(2)
+# graduate WAVE: eight 4,400 SAL1 buys (~35k SAL1) cross the 30k SAL1 curve, the rest lands in the pool
+print("graduating WAVE")
+whales = [call("POST", "/api/session", {}) for _ in range(8)]   # fresh visitors: all 5,000 SAL1 unlocked
+for v in whales:
+    wait_unlocked(v["key"], 4500 * COIN)
+for v in whales:
+    try:
+        call("POST", "/api/tokens/WAVE/trade", {"side": "buy", "amount": "4400", "slippage_bps": 5000}, key=v["key"])
+        print(f"{v['nickname']} bought WAVE for 4400 SAL1")
+    except urllib.error.HTTPError as e:
+        print("buy failed", e.code, e.read()[:120])
+    time.sleep(2)
+deadline = time.time() + 600
+while not call("GET", "/api/tokens/WAVE")["token"]["graduated"] and time.time() < deadline:
+    time.sleep(3)
+print("WAVE graduated:", call("GET", "/api/tokens/WAVE")["token"]["graduated"])
+for v in visitors[:3]:
+    wait_unlocked(v["key"], 200 * COIN)
+    try:
+        call("POST", "/api/tokens/WAVE/trade", {"side": "buy", "amount": "150"}, key=v["key"])
+        print(f"{v['nickname']} bought WAVE in the pool for 150 SAL1")
+    except urllib.error.HTTPError as e:
+        print("pool buy failed", e.code, e.read()[:120])
 print("seed done")

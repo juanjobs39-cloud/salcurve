@@ -52,7 +52,11 @@ CREATE INDEX IF NOT EXISTS trades_ticker ON trades(ticker, height);
 CREATE TABLE IF NOT EXISTS curve_state (
   ticker  TEXT PRIMARY KEY,
   reserve INTEGER NOT NULL,
-  sold    INTEGER NOT NULL
+  sold    INTEGER NOT NULL,
+  phase   INTEGER NOT NULL DEFAULT 0,      -- 0 = bonding curve, 1 = graduated pool
+  pool_sal    INTEGER NOT NULL DEFAULT 0,
+  pool_tokens INTEGER NOT NULL DEFAULT 0,
+  graduation_height INTEGER
 );
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
 """
@@ -64,6 +68,12 @@ class Db:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.executescript(SCHEMA)
+        # databases created before graduation existed
+        cols = {r[1] for r in self.conn.execute("PRAGMA table_info(curve_state)")}
+        for col, ddl in (("phase", "INTEGER NOT NULL DEFAULT 0"), ("pool_sal", "INTEGER NOT NULL DEFAULT 0"),
+                         ("pool_tokens", "INTEGER NOT NULL DEFAULT 0"), ("graduation_height", "INTEGER")):
+            if col not in cols:
+                self.conn.execute(f"ALTER TABLE curve_state ADD COLUMN {col} {ddl}")
         self.lock = threading.Lock()
 
     def q(self, sql, *args):

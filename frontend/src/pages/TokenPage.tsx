@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, COIN, type Quote } from "../api";
-import { Card, CurveProgress, PriceChart, Spinner, TokenAvatar, TradeRow } from "../components";
+import { Card, CurveProgress, GraduatedBadge, PriceChart, Spinner, TokenAvatar, TradeRow } from "../components";
 import { amount, ago, pct, price } from "../format";
 import { usePoll, useSession } from "../hooks";
 
-function TradePanel({ ticker }: { ticker: string }) {
+function TradePanel({ ticker, graduated }: { ticker: string; graduated: boolean }) {
   const { me, refreshMe } = useSession();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [value, setValue] = useState("");
@@ -104,7 +104,7 @@ function TradePanel({ ticker }: { ticker: string }) {
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-ink-400">Fee (1%, burned)</span>
+          <span className="text-ink-400">{graduated ? "Fee (1%, kept by the pool)" : "Fee (1%, burned)"}</span>
           <span className="font-mono text-ink-200">{quote ? `${amount(quote.fee, 4)} SAL1` : "–"}</span>
         </div>
         <div className="flex justify-between">
@@ -113,6 +113,9 @@ function TradePanel({ ticker }: { ticker: string }) {
             {quote ? pct(quote.price_impact, 2) : "–"}
           </span>
         </div>
+        {quote?.graduates && (
+          <div className="text-xs text-amber-200">★ This buy completes the curve: it graduates the token and the rest is swapped in the new pool.</div>
+        )}
         <div className="flex justify-between items-center">
           <span className="text-ink-400">Max slippage</span>
           <select
@@ -170,6 +173,7 @@ export default function TokenPage() {
               <div className="flex flex-wrap items-baseline gap-2">
                 <h1 className="text-2xl font-bold text-white">{tok.name}</h1>
                 <span className="font-mono text-sal-400">${tok.ticker}</span>
+                {tok.graduated && <GraduatedBadge />}
               </div>
               <div className="text-sm text-ink-400">
                 {tok.creator ? `created by ${tok.creator}` : "launched on chain"} · {ago(tok.created_at)}
@@ -182,7 +186,9 @@ export default function TokenPage() {
             {[
               ["Price", `${price(tok.price)} SAL1`],
               ["Market cap", `${amount(tok.market_cap)} SAL1`],
-              ["Reserve", `${amount(tok.reserve)} SAL1`],
+              tok.graduated
+                ? ["Locked liquidity", `${amount(tok.pool_sal)} SAL1`]
+                : ["Reserve", `${amount(tok.reserve)} SAL1`],
               ["24h volume", `${amount(tok.volume_24h)} SAL1`],
             ].map(([k, v]) => (
               <div key={k} className="rounded-xl bg-ink-800 p-3">
@@ -192,9 +198,13 @@ export default function TokenPage() {
             ))}
           </div>
           <div className="mt-4">
-            <CurveProgress progress={tok.progress} />
+            <CurveProgress progress={tok.progress} graduated={tok.graduated} />
             <div className="mt-1 text-xs text-ink-400">
-              {amount(tok.sold)} of 100M tokens sold by the curve · {tok.trades} trades
+              {tok.graduated
+                ? `Graduated${tok.graduation_height ? ` at block ${tok.graduation_height}` : ""}: ${amount(tok.pool_sal)} SAL1 + ${amount(
+                    tok.pool_tokens,
+                  )} tokens locked in the pool forever · ${amount(tok.circulating)} tokens held · ${tok.trades} trades`
+                : `${amount(tok.sold)} of 80M tokens sold · at 80M the curve graduates to a locked pool · ${tok.trades} trades`}
             </div>
           </div>
         </Card>
@@ -216,11 +226,15 @@ export default function TokenPage() {
         </Card>
       </div>
       <aside className="space-y-4">
-        {tok.live ? <TradePanel ticker={tok.ticker} /> : <Card className="text-amber-300 text-sm">Waiting for the launch block…</Card>}
+        {tok.live ? <TradePanel ticker={tok.ticker} graduated={tok.graduated} /> : <Card className="text-amber-300 text-sm">Waiting for the launch block…</Card>}
         <Card className="text-xs text-ink-400 space-y-1">
           <div className="text-ink-200 font-semibold text-sm mb-1">How the curve works</div>
           <p>Buying burns SAL1 and the block's protocol transaction mints tokens; selling burns tokens and mints SAL1 from the curve's reserve.</p>
           <p>Price rises with every buy and falls with every sell. The math runs in consensus, on every node.</p>
+          <p>
+            When 80M tokens are sold the curve graduates: its reserve and the last 20M tokens become a pool that nobody owns, so the
+            liquidity can never be pulled. The pool starts at the curve's final price and its 1% fee stays in the pool.
+          </p>
         </Card>
       </aside>
     </div>

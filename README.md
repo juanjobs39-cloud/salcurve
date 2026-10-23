@@ -2,7 +2,8 @@
 
 **Fair-launch bonding-curve tokens on Salvium**: a pump.fun-style web app built on the
 native `CURVE` transaction type proposed in
-[salvium/salvium#139](https://github.com/salvium/salvium/pull/139).
+[salvium/salvium#139](https://github.com/salvium/salvium/pull/139), with graduation to a locked
+pool from [salvium/salvium#140](https://github.com/salvium/salvium/pull/140).
 
 > **Demo only.** CURVE is a proposal: it is not on Salvium mainnet. SalCurve runs against a
 > private regtest chain built from that PR. Coins have no value, and each visitor gets a
@@ -12,8 +13,12 @@ native `CURVE` transaction type proposed in
 
 ## What it does
 
-- **Launch** a token: ticker, name, description and image. The whole 100M supply is sold by the
-  curve, with no presale and no team allocation; the launch fee is burned.
+- **Launch** a token: ticker, name, description and image. There is no presale and no team
+  allocation; the launch fee is burned.
+- **Graduate**: the curve sells 80M of the 100M tokens. The moment it sells out, its reserve
+  (30,000 SAL1) and the last 20M tokens become a pool that nobody owns, so the liquidity is locked
+  forever. The pool opens at the curve's final price, so there is no jump, and its 1% fee stays in
+  the pool. Graduated tokens show a **★ Graduated** badge and keep trading with the same buttons.
 - **Trade** on the curve with live quotes, price impact and a slippage limit. If the price
   moves past the limit before the next block, the network refunds the burn automatically.
 - **Browse** tokens (New, Trending, Top market cap) with a price chart, curve progress, trade
@@ -26,7 +31,7 @@ executable spec (`backend/curve_model.py`) and adopts the chain state if they ev
 
 ## Screenshots
 
-| Token page: chart, curve progress, buy/sell | Launch a token |
+| Token page: a graduated token, chart, buy/sell | Launch a token |
 |---|---|
 | ![Token page](docs/token.png) | ![Launch](docs/launch.png) |
 | **Leaderboard** | **Portfolio** |
@@ -69,8 +74,8 @@ cd salcurve
 ```
 
 **Step 2: build Salvium with the CURVE proposal.** This installs the build dependencies, fetches
-[salvium/salvium#139](https://github.com/salvium/salvium/pull/139) (CURVE) and
-[#121](https://github.com/salvium/salvium/pull/121) (wallet `--regtest`), and builds
+[salvium/salvium#140](https://github.com/salvium/salvium/pull/140) (CURVE with graduation; it
+includes #139) and [#121](https://github.com/salvium/salvium/pull/121) (wallet `--regtest`), and builds
 `salviumd` and `salvium-wallet-rpc` into `../salvium-curve/build/bin`.
 ```bash
 ./setup_salvium.sh
@@ -85,7 +90,7 @@ cd frontend && npm install && npm run build && cd ..
 ```
 
 **Step 4: start everything.** This starts a private regtest chain, the wallet RPC and the app on
-port 8080. The first start mines 600 blocks (a minute or two) so the faucet has mature coins.
+port 8080. The first start mines 1000 blocks (a few minutes) so the faucet has mature coins.
 ```bash
 FRESH=1 SALVIUM_BIN=../salvium-curve/build/bin ./run_demo.sh
 ```

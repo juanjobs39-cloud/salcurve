@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the Salvium binaries SalCurve needs, on Ubuntu 22.04/24.04 (or WSL2 Ubuntu on Windows):
-#   - salvium/salvium#139  native bonding-curve tokens (CURVE)
+#   - salvium/salvium#140  CURVE graduation (stacked on #139: native bonding-curve tokens)
 #   - salvium/salvium#121  wallet --regtest support
 #   - a smaller wallet subaddress lookahead (demo-only: opening a wallet takes ~3 s, not ~30 s)
 #
@@ -24,9 +24,9 @@ if [ ! -d "$DIR/.git" ]; then
   git clone -q https://github.com/salvium/salvium.git "$DIR"
 fi
 cd "$DIR"
-echo "== fetching the CURVE proposal (#139) and wallet regtest support (#121)"
-git fetch -q origin pull/139/head:pr139 pull/121/head:pr121
-git checkout -q -B salcurve-demo pr139
+echo "== fetching the CURVE proposal with graduation (#140, includes #139) and wallet regtest support (#121)"
+git fetch -q origin pull/140/head:pr140 pull/121/head:pr121
+git checkout -q -B salcurve-demo pr140
 git -c user.name=salcurve -c user.email=salcurve@localhost merge -q --no-edit pr121
 git submodule update --init --recursive --depth 1 -q
 

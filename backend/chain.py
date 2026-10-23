@@ -44,13 +44,15 @@ class Chain:
         return int(json.loads(txs[0]["as_json"]).get("amount_burnt", 0))
 
     def _state(self, ticker: str) -> M.CurveState:
-        row = self.db.one("SELECT reserve, sold FROM curve_state WHERE ticker=?", ticker)
-        return M.CurveState(row["reserve"], row["sold"]) if row else M.CurveState()
+        return M.state_from_row(self.db.one("SELECT * FROM curve_state WHERE ticker=?", ticker))
 
-    def _save_state(self, ticker: str, st: M.CurveState):
-        self.db.x("INSERT INTO curve_state(ticker,reserve,sold) VALUES(?,?,?) "
-                  "ON CONFLICT(ticker) DO UPDATE SET reserve=excluded.reserve, sold=excluded.sold",
-                  ticker, st.reserve, st.sold)
+    def _save_state(self, ticker: str, st: M.CurveState, graduation_height=None):
+        self.db.x("INSERT INTO curve_state(ticker,reserve,sold,phase,pool_sal,pool_tokens,graduation_height) "
+                  "VALUES(?,?,?,?,?,?,?) ON CONFLICT(ticker) DO UPDATE SET reserve=excluded.reserve, "
+                  "sold=excluded.sold, phase=excluded.phase, pool_sal=excluded.pool_sal, "
+                  "pool_tokens=excluded.pool_tokens, "
+                  "graduation_height=COALESCE(excluded.graduation_height, curve_state.graduation_height)",
+                  ticker, st.reserve, st.sold, st.phase, st.pool_sal, st.pool_tokens, graduation_height)
 
     def _index_block(self, height: int):
         blk = self.d.call("get_block", height=height)
@@ -78,7 +80,7 @@ class Chain:
                     log.error("model/chain mismatch on %s: model %s chain %s", tx_hash, out, info["amount_out"])
             else:
                 out = 0   # refunded: state unchanged
-            self._save_state(ticker, st)
+            self._save_state(ticker, st, height if info.get("graduated") else None)
             self.db.x("INSERT OR REPLACE INTO trades(tx_hash,height,ts,ticker,op,filled,amount_in,amount_out,"
                       "price_after,reserve_after,sold_after,user) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
                       tx_hash, height, ts, ticker, info["op"], int(info["filled"]), amount_in,
@@ -87,10 +89,10 @@ class Chain:
         # the chain is the source of truth: reconcile any curve this block touched
         for ticker in touched:
             c = self.d.call("get_curve_info", asset_type="sal" + ticker)["curve"]
-            if (c["reserve"], c["sold"]) != tuple(self.db.one(
-                    "SELECT reserve, sold FROM curve_state WHERE ticker=?", ticker).values()):
+            chain_st = M.state_from_row(c)
+            if chain_st.key() != self._state(ticker).key():
                 log.error("curve %s out of sync, adopting chain state", ticker)
-                self._save_state(ticker, M.CurveState(c["reserve"], c["sold"]))
+                self._save_state(ticker, chain_st, c.get("graduation_height") or None)
 
     def indexer_loop(self):
         while not self.stop.is_set():
